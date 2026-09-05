@@ -29,55 +29,56 @@ gsap.registerPlugin(useGSAP);
 const GITHUB_URL = "https://github.com/pxygit/SunnyRegister";
 
 const COPY = {
-  "zh-CN": {
-    sub: "GPT 账号注册与管理",
-    github: "查看 GitHub 开源仓库",
-    language: "切换到 English",
-    login: "登录",
-    eyebrow: "一体化账号注册工作流",
-    lead: "把邮箱验证、账号注册、接码绑定、代理出站、反代导入和 Session 管理放进同一套安静、可控的工作台。",
-    openConsole: "进入控制台",
-    source: "查看源代码",
-    live: "运行链路",
-    ready: "资源就绪",
-    running: "自动注册执行中",
-    complete: "Session 已安全存储",
-    accounts: "账户",
-    mailboxes: "邮箱资源",
-    successRate: "任务进度",
-    sectionEyebrow: "核心能力",
-    sectionTitle: "从资源配置到账号交付，全程可观察",
-    sectionDesc: "每个阶段独立配置、按需启用，任务日志与账户状态实时回写。",
+  "vi-VN": {
+    sub: "Quản lý đăng ký và tài khoản GPT",
+    github: "Xem kho mã nguồn mở trên GitHub",
+    language: "Chuyển sang English",
+    login: "Đăng nhập",
+    eyebrow: "Quy trình đăng ký tài khoản hợp nhất",
+    lead: "Đưa xác minh email, đăng ký tài khoản, liên kết số điện thoại, định tuyến proxy, nhập reverse proxy và quản lý Session vào một không gian làm việc yên tĩnh, có kiểm soát.",
+    openConsole: "Mở bảng điều khiển",
+    source: "Xem mã nguồn",
+    live: "Quy trình đang chạy",
+    ready: "Tài nguyên đã sẵn sàng",
+    running: "Đang tự động đăng ký",
+    complete: "Session đã được lưu an toàn",
+    accounts: "Tài khoản",
+    mailboxes: "Tài nguyên email",
+    successRate: "Tiến độ tác vụ",
+    sectionEyebrow: "Năng lực cốt lõi",
+    sectionTitle: "Quan sát được từ cấu hình tài nguyên đến bàn giao tài khoản",
+    sectionDesc: "Bật từng giai đoạn độc lập khi nhật ký tác vụ và trạng thái tài khoản được cập nhật theo thời gian thực.",
     features: [
-      ["邮箱池管理", "批量导入 Outlook 邮箱，支持分组、状态、邮件查询与资源启停。"],
-      ["自动注册工作台", "按邮箱批量创建任务，识别注册或登录路径并实时展示分账户日志。"],
-      ["接码能力编排", "统一管理自建手机号池与外部接码供应商，按可用性选择资源。"],
-      ["代理出站控制", "管理代理池、健康状态与国家标签，为注册流量提供独立出口。"],
-      ["反代平台联动", "完成账号阶段后按配置导入 sub2api，并保留每一步执行结果。"],
-      ["Session 管理", "集中保存和导出 Auth Session、Access Token 及账户有效信息。"],
+      ["Quản lý nhóm email", "Nhập hàng loạt email Outlook với chức năng nhóm, trạng thái, truy vấn thư và bật/tắt tài nguyên."],
+      ["Không gian đăng ký", "Tạo tác vụ theo lô email, nhận diện luồng đăng ký hoặc đăng nhập và theo dõi nhật ký từng tài khoản."],
+      ["Điều phối SMS", "Quản lý tập số điện thoại tự xây dựng và nhà cung cấp SMS bên ngoài theo khả năng sẵn sàng."],
+      ["Định tuyến proxy", "Quản lý sức khỏe proxy và nhãn quốc gia để cung cấp lối ra riêng cho lưu lượng đăng ký."],
+      ["Tích hợp reverse proxy", "Nhập tài khoản đã hoàn tất vào sub2api và lưu kết quả của từng bước thực thi."],
+      ["Quản lý Session", "Tập trung lưu và xuất Auth Session, Access Token cùng thông tin tài khoản hợp lệ."],
     ],
-    flowEyebrow: "阶段可控",
-    flowTitle: "一条清晰的注册链路",
-    flowDesc: "按任务选择终止阶段，已完成结果即时保存，未启用的资源不会被误用。",
-    flow: ["邮箱验证", "注册 / 登录", "接码绑定", "反代导入"],
-    secureTitle: "管理入口受会话保护",
-    secureDesc: "未登录用户只能访问项目介绍。登录后才会加载管理界面与业务数据。",
-    drawerTitle: "登录 SunnyRegister",
-    drawerDesc: "使用管理员凭据进入注册机控制台。",
-    username: "用户名",
-    password: "密码",
-    submit: "安全登录",
-    checking: "正在验证...",
-    failed: "登录失败，请检查用户名和密码",
-    tooMany: "登录尝试过于频繁，请稍后再试",
-    close: "关闭登录面板",
-    protected: "受保护的管理会话",
-    logoutSuccess: "已安全退出登录",
+    flowEyebrow: "Kiểm soát từng giai đoạn",
+    flowTitle: "Một quy trình đăng ký rõ ràng",
+    flowDesc: "Chọn giai đoạn kết thúc cho từng tác vụ. Kết quả hoàn tất được lưu ngay và tài nguyên chưa bật sẽ không bị sử dụng.",
+    flow: ["Xác minh email", "Đăng ký / đăng nhập", "Liên kết số điện thoại", "Nhập reverse proxy"],
+    secureTitle: "Cổng quản trị được bảo vệ bằng phiên đăng nhập",
+    secureDesc: "Khách chưa đăng nhập chỉ xem được phần giới thiệu dự án. Giao diện quản trị và dữ liệu nghiệp vụ chỉ tải sau khi xác thực.",
+    drawerTitle: "Đăng nhập SunnyRegister",
+    drawerDesc: "Dùng thông tin quản trị viên để mở bảng điều khiển đăng ký.",
+    username: "Tên người dùng",
+    password: "Mật khẩu",
+    submit: "Đăng nhập an toàn",
+    checking: "Đang xác minh...",
+    failed: "Đăng nhập thất bại, hãy kiểm tra tên người dùng và mật khẩu",
+    tooMany: "Bạn thử đăng nhập quá nhiều lần, hãy thử lại sau",
+    close: "Đóng bảng đăng nhập",
+    protected: "Phiên quản trị được bảo vệ",
+    logoutSuccess: "Đã đăng xuất an toàn",
+    footer: "Không gian đăng ký mã nguồn mở",
   },
   "en-US": {
     sub: "GPT account registration and management",
     github: "View the GitHub repository",
-    language: "切换到中文",
+    language: "Switch to Vietnamese",
     login: "Sign in",
     eyebrow: "Unified account registration workflow",
     lead: "Bring mailbox verification, account registration, phone binding, proxy routing, reverse-platform import, and Session management into one calm, controlled workspace.",
@@ -118,6 +119,7 @@ const COPY = {
     close: "Close sign-in panel",
     protected: "Protected admin session",
     logoutSuccess: "Signed out securely",
+    footer: "Open source registration workspace",
   },
 } as const;
 
@@ -223,7 +225,7 @@ export default function PublicLanding({ onLogin, logoutNotice = false, onNoticeD
   }
 
   return (
-    <div ref={rootRef} className="public-landing">
+    <div ref={rootRef} data-i18n-ignore="true" className="public-landing">
       {logoutNotice && (
         <div className="public-toast" role="status">
           <CheckCircle2 aria-hidden="true" />
@@ -241,7 +243,7 @@ export default function PublicLanding({ onLogin, logoutNotice = false, onNoticeD
             <GitBranch aria-hidden="true" />
           </a>
           <button type="button" className="round-tool public-language" onClick={toggleLanguage} title={c.language} aria-label={c.language}>
-            <Languages aria-hidden="true" /><span>{language === "zh-CN" ? "中" : "EN"}</span>
+            <Languages aria-hidden="true" /><span>{language === "vi-VN" ? "VI" : "EN"}</span>
           </button>
           <button type="button" className="public-login-button" onClick={openDrawer}>
             <LogIn aria-hidden="true" /><span>{c.login}</span>
@@ -306,7 +308,7 @@ export default function PublicLanding({ onLogin, logoutNotice = false, onNoticeD
         </section>
       </main>
 
-      <footer className="public-footer"><span>SunnyRegister</span><span>Open source registration workspace</span></footer>
+      <footer className="public-footer"><span>SunnyRegister</span><span>{c.footer}</span></footer>
 
       {drawerOpen && (
         <div className="public-drawer-mask" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDrawer(); }}>

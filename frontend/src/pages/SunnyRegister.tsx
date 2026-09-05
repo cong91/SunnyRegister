@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmBubble } from "@/components/ui/confirm-bubble";
 import { API_BASE, apiDownload, apiErrorStatus, apiFetch, cn, triggerBrowserDownload } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n-context";
+import { localizeText } from "@/lib/text-localizer";
 import { useSunnyGsap } from "@/lib/useSunnyGsap";
 import { CachedPage, PagePortal } from "@/lib/page-cache";
 import { useVisitedPageKeys } from "@/lib/page-cache-hooks";
@@ -139,7 +140,7 @@ function ResizableDataTable({ tableKey, columns, headers, className="", children
     window.addEventListener("pointerup",cleanup);
     window.addEventListener("pointercancel",cleanup);
   };
-  const resizeTitle=typeof document!=="undefined"&&document.documentElement.lang.startsWith("en")?"Drag to resize; double-click to reset":"拖动调整列宽，双击恢复默认宽度";
+  const resizeTitle=typeof document!=="undefined"&&document.documentElement.lang.startsWith("en")?"Drag to resize; double-click to reset":"Kéo để thay đổi độ rộng cột, nhấp đúp để khôi phục mặc định";
   const tableWidth=widths.reduce((sum,width)=>sum+width,0);
   const actionIndex=columns.length-1;
   return <table ref={tableRef} className={cn("sr-account-table sr-resizable-table",className)} style={{width:tableWidth,minWidth:tableWidth,maxWidth:"none",["--sr-selection-column-width" as string]:`${widths[0] || 0}px`}}>
@@ -1041,6 +1042,23 @@ Object.assign(en.progressSteps, {
   login_secret_failed: "Login Secret setup incomplete",
 });
 
+function localizeCopy<T extends AnyObj>(source: T, cache = new WeakMap<object, AnyObj>()): T {
+  const cached = cache.get(source);
+  if (cached) return cached as T;
+  const localized = new Proxy(source, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof value === "string") return localizeText(value, "vi-VN");
+      if (value && typeof value === "object") return localizeCopy(value as AnyObj, cache);
+      return value;
+    },
+  }) as T;
+  cache.set(source, localized);
+  return localized;
+}
+
+const vi = localizeCopy(zh);
+
 const MAILBOX_STATUSES = ["未注册", "已注册", "已接码", "已反代", "已封禁", "需二验", "登录刷新", "失败"];
 const PLAN_TYPE_OPTIONS = ["free", "plus", "k12", "team", "pro"];
 const HEALTH_CHECKABLE_STATUSES = new Set(["已注册", "已接码", "已反代", "PLUS试用中", "需二验", "registered", "phone_bound", "reverse_proxied"]);
@@ -1370,15 +1388,15 @@ function logFromEvent(event: AnyObj): LogEntry {
   };
 }
 function localLog(message: string, level = "info"): LogEntry {
-  return { id: `${Date.now()}-${Math.random()}`, time: new Date().toLocaleTimeString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" }), level, module: logModule(message), message: logMessage(message), rawMessage: message, detail: {} };
+  return { id: `${Date.now()}-${Math.random()}`, time: new Date().toLocaleTimeString("vi-VN", { hour12: false, timeZone: "Asia/Shanghai" }), level, module: logModule(message), message: logMessage(message), rawMessage: message, detail: {} };
 }
 function batchSeparatorLog(label: string): LogEntry {
-  return { id: `sep-${Date.now()}-${Math.random()}`, time: new Date().toLocaleTimeString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" }), level: "separator", module: "绯荤粺", message: label, rawMessage: label, detail: { separator: true } };
+  return { id: `sep-${Date.now()}-${Math.random()}`, time: new Date().toLocaleTimeString("vi-VN", { hour12: false, timeZone: "Asia/Shanghai" }), level: "separator", module: "System", message: label, rawMessage: label, detail: { separator: true } };
 }
 
 export default function SunnyRegister() {
   const { language } = useI18n();
-  const t = language === "en-US" ? en : zh;
+  const t = language === "en-US" ? en : vi;
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const page = location.pathname.includes("mailbox") ? "mailbox" : location.pathname.includes("phone") ? "phone" : location.pathname.includes("sub2api") ? "sub2api" : location.pathname.includes("proxy") ? "proxy" : location.pathname.includes("session") ? "session" : "workbench";
@@ -1386,7 +1404,7 @@ export default function SunnyRegister() {
   useSunnyGsap(rootRef, page);
   const [toast, setToast] = useState<ToastState>(null);
   const notify = (type: "ok" | "fail", text: string) => { setToast({ type, text }); };
-  return <div ref={rootRef} className="sunny-page"><Toast toast={toast} clear={() => setToast(null)} />
+  return <div ref={rootRef} data-i18n-ignore="true" className="sunny-page"><Toast toast={toast} clear={() => setToast(null)} />
     <CachedPage active={page === "workbench"} className="space-y-6">{visitedPages.has("workbench") && <><Hero t={t} /><Workbench t={t} notify={notify} /></>}</CachedPage>
     <CachedPage active={page === "mailbox"} className="space-y-6">{visitedPages.has("mailbox") && <MailboxConfig t={t} notify={notify} />}</CachedPage>
     <CachedPage active={page === "phone"} className="space-y-6">{visitedPages.has("phone") && <PhoneConfig t={t} notify={notify} />}</CachedPage>
@@ -1877,9 +1895,9 @@ function Workbench({ t, notify }: { t: typeof zh; notify: (type: "ok" | "fail", 
 }
 
 function AutoRegisterModal({ t, busy, selectedEmails, selectedNeedPhone, concurrency, setConcurrency, registerCount, setRegisterCount, identity, setIdentity, mode, setMode, protocolChallengeStrategy, setProtocolChallengeStrategy, stage, setStage, allTrafficProxyPool, setAllTrafficProxyPool, setupLoginSecret, setSetupLoginSecret, onClose, onStart, notify }: { t: typeof zh; busy: boolean; selectedEmails: string[]; selectedNeedPhone: boolean; concurrency: number; setConcurrency: (v:number)=>void; registerCount: number; setRegisterCount: (v:number)=>void; identity: "system"|"domain"|"remail"|"google"|"microsoft"; setIdentity: (v:"system"|"domain"|"remail"|"google"|"microsoft")=>void; mode: "protocol"|"background"|"visible"; setMode:(v:"protocol"|"background"|"visible")=>void; protocolChallengeStrategy: ProtocolChallengeStrategy; setProtocolChallengeStrategy:(v:ProtocolChallengeStrategy)=>void; stage: RegisterStage; setStage:(v:RegisterStage)=>void; allTrafficProxyPool: boolean; setAllTrafficProxyPool: (v:boolean)=>void; setupLoginSecret: boolean; setSetupLoginSecret: (v:boolean)=>void; onClose:()=>void; onStart:()=>void; notify:(type:"ok"|"fail", text:string)=>void }) {
-	const mailboxVerificationDescription = t === zh
-		? "系统将按邮箱类型自动选择 OAuth、iCloud 或域名邮箱 API 渠道完成邮箱验证。"
-		: "The system automatically selects the OAuth, iCloud, or domain-mail API channel based on each mailbox type.";
+	const mailboxVerificationDescription = t === en
+		? "The system automatically selects the OAuth, iCloud, or domain-mail API channel based on each mailbox type."
+		: "Hệ thống tự động chọn kênh API OAuth, iCloud hoặc email tên miền theo loại hộp thư để hoàn tất xác minh email.";
   const [phoneCfg, setPhoneCfg] = useState<AnyObj>({ pool_enabled: true, usable_count: 0 });
   const [reverseCfg, setReverseCfg] = useState<AnyObj>({});
   const [mailboxCfg, setMailboxCfg] = useState<AnyObj>({ pool_enabled: true });
@@ -1904,7 +1922,10 @@ function AutoRegisterModal({ t, busy, selectedEmails, selectedNeedPhone, concurr
     return () => { alive = false; };
   }, []);
   const identityText = identity === "system" ? t.systemMailbox : identity === "domain" ? t.domainMailboxIdentity : identity === "remail" ? "Remail" : identity === "google" ? "Google" : "Microsoft";
-  const protocolCopy = t === en ? PROTOCOL_MODE_COPY.en : PROTOCOL_MODE_COPY.zh;
+  const protocolCopy = t === en ? PROTOCOL_MODE_COPY.en : {
+    step2Desc: localizeText(PROTOCOL_MODE_COPY.zh.step2Desc, "vi-VN"),
+    desc: localizeText(PROTOCOL_MODE_COPY.zh.desc, "vi-VN"),
+  };
   const modeText = mode === "protocol" ? t.protocolMode : mode === "background" ? t.backgroundMode : t.visibleMode;
   const stageText = stage === CODEX_PHONE_BIND ? t.codexPhoneBind : stage === IMPORT_REVERSE_PROXY ? t.importReverseProxy : stage === AGENT_IDENTITY_REVERSE_PROXY ? t.agentIdentityReverseProxy : t.registerOnly;
   const usablePhones = Number(phoneCfg.usable_count || 0);
@@ -2011,9 +2032,9 @@ function mailboxLineErrors(lines: string, mailboxType: "microsoft" | "apple" | "
 }
 
 function MailboxConfig({ t, notify }: { t: typeof zh; notify: (type: "ok" | "fail", text: string) => void }) {
-	const emptyMailboxDescription = t === zh
-		? "请点击右上角“导入邮箱”添加微软邮箱或 Apple iCloud 邮箱。"
-		: "Click 'Import Mailboxes' in the upper-right corner to add Microsoft or Apple iCloud mailboxes.";
+	const emptyMailboxDescription = t === en
+		? "Click 'Import Mailboxes' in the upper-right corner to add Microsoft or Apple iCloud mailboxes."
+		: "Nhấp vào “Nhập email” ở góc trên bên phải để thêm email Microsoft hoặc Apple iCloud.";
   const [items,setItems]=useCachedState<AnyObj[]>("mailbox.items", []);
   const [groups,setGroups]=useCachedState<AnyObj[]>("mailbox.groups", []);
   const [page,setPage]=useCachedState("mailbox.page", 1);
@@ -4703,7 +4724,7 @@ function localizedLogMessage(t: typeof zh, entry: LogEntry) {
     skippedPhone: Number(detail.skipped_phone ?? 0),
     imported: Number(detail.imported ?? 0),
   };
-  const pick = (zhText: string, enText: string) => enMode ? enText : zhText;
+  const pick = (zhText: string, enText: string) => enMode ? enText : localizeText(zhText, "vi-VN");
   if (/SunnyRegister Worker accepted register task/i.test(msg)) return pick("SunnyRegister Worker 已接收注册任务", "SunnyRegister Worker accepted the register task");
   if (/task stage|本次任务阶段/i.test(msg)) return pick(`本次任务阶段：${stage}，账号数量：${nums.total || detail.total || "-"}`, `Task stage: ${stage}; accounts: ${nums.total || detail.total || "-"}`);
   if (/register task concurrency|注册任务并发数/i.test(msg)) return pick(`注册任务并发数：${detail.concurrency || "-"}；每个邮箱使用独立 Worker、浏览器上下文和邮箱验证码读取器`, `Register task concurrency: ${detail.concurrency || "-"}; each mailbox uses an isolated worker, browser context and mailbox OTP reader`);

@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "i18n:generate": "node scripts/generate-vi-map.mjs",
+    "test:i18n": "node scripts/i18n-smoke.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -203,7 +203,7 @@ function mergeResultStates(previous: Record<string, MomoAccountState>, items: Ro
 function formatTime(value: unknown) {
   if (!value) return "-";
   const date = new Date(String(value));
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("zh-CN", { hour12: false });
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("vi-VN", { hour12: false });
 }
 
 function formatAmount(result?: Row) {

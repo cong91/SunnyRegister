@@ -80,17 +80,17 @@ const emptyFilters: AuditFilters = {
 };
 
 const copy = {
-  "zh-CN": {
-    title: "日志管理", desc: "集中审计系统登录、配置变更、资源增删、任务执行、定时任务与运行指标。查询类操作默认不记录。",
-    total: "日志总量", today: "今日新增", failed: "异常/失败", system: "系统事件", search: "搜索摘要、对象、路径、任务或请求 ID...",
-    all: "全部", type: "日志类型", category: "操作类别", action: "操作行为", actor: "操作人", ip: "IP 地址", level: "级别", status: "结果",
-    source: "来源", entity: "对象类型", task: "任务 ID", request: "请求 ID", from: "开始时间", to: "结束时间", reset: "重置筛选",
-    refresh: "刷新", retention: "保留天数", save: "保存策略", selected: "已选 {count} 项", selectAll: "全选", selectAllDone: "已选中当前筛选结果中的 {count} 条记录", clear: "清除选择", delete: "删除日志",
-    deleteSelected: "确认删除选中的日志？", deleteFiltered: "确认删除当前筛选结果？", deleteHint: "删除后不可恢复。",
-    exportFormat: "导出格式", export: "异步导出", exportRunning: "正在后台整理并打包日志，请耐心等待...", exportReady: "日志导出完成，已开始下载",
-    time: "时间", kind: "类型 / 类别", behavior: "行为", operator: "操作人 / IP", target: "对象 / 任务", result: "结果", summary: "日志摘要", operation: "操作",
-    detail: "日志详情", close: "关闭", noData: "没有符合筛选条件的日志", loading: "正在加载日志...", deleted: "日志删除完成", saved: "日志保留策略已保存",
-    prev: "上一页", next: "下一页", page: "第 {page} / {pages} 页", range: "显示 {from} 至 {to}，共 {total} 条", perPage: "每页",
+  "vi-VN": {
+    title: "Quản lý nhật ký", desc: "Kiểm toán tập trung các lần đăng nhập, thay đổi cấu hình, thêm xóa tài nguyên, thực thi tác vụ, tác vụ định kỳ và chỉ số vận hành. Thao tác truy vấn mặc định không được ghi lại.",
+    total: "Tổng nhật ký", today: "Phát sinh hôm nay", failed: "Lỗi / thất bại", system: "Sự kiện hệ thống", search: "Tìm trong tóm tắt, đối tượng, đường dẫn, tác vụ hoặc ID yêu cầu...",
+    all: "Tất cả", type: "Loại nhật ký", category: "Nhóm thao tác", action: "Hành động", actor: "Người thao tác", ip: "Địa chỉ IP", level: "Cấp độ", status: "Kết quả",
+    source: "Nguồn", entity: "Loại đối tượng", task: "ID tác vụ", request: "ID yêu cầu", from: "Thời gian bắt đầu", to: "Thời gian kết thúc", reset: "Đặt lại bộ lọc",
+    refresh: "Làm mới", retention: "Số ngày lưu", save: "Lưu chính sách", selected: "Đã chọn {count} mục", selectAll: "Chọn tất cả", selectAllDone: "Đã chọn {count} bản ghi trong kết quả hiện tại", clear: "Xóa lựa chọn", delete: "Xóa nhật ký",
+    deleteSelected: "Xóa các nhật ký đã chọn?", deleteFiltered: "Xóa toàn bộ nhật ký theo bộ lọc hiện tại?", deleteHint: "Thao tác này không thể hoàn tác.",
+    exportFormat: "Định dạng xuất", export: "Xuất nền", exportRunning: "Đang chuẩn bị và đóng gói nhật ký ở chế độ nền...", exportReady: "Đã xuất nhật ký và bắt đầu tải xuống",
+    time: "Thời gian", kind: "Loại / nhóm", behavior: "Hành vi", operator: "Người thao tác / IP", target: "Đối tượng / tác vụ", result: "Kết quả", summary: "Tóm tắt nhật ký", operation: "Thao tác",
+    detail: "Chi tiết nhật ký", close: "Đóng", noData: "Không có nhật ký phù hợp với bộ lọc", loading: "Đang tải nhật ký...", deleted: "Đã xóa nhật ký", saved: "Đã lưu chính sách lưu nhật ký",
+    prev: "Trước", next: "Sau", page: "Trang {page} / {pages}", range: "Hiển thị {from} đến {to} trên tổng {total} mục", perPage: "Mỗi trang",
   },
   "en-US": {
     title: "Audit Logs", desc: "Audit sign-ins, configuration changes, resource mutations, tasks, schedules, and runtime metrics. Read-only queries are not recorded.",
@@ -256,7 +256,7 @@ export default function AuditLogPage() {
     {key:"summary", label:c.summary}, {key:"operation", label:c.operation},
   ];
   const auditTableWidth = 44 + auditColumns.reduce((sum, column)=>sum + columnWidths[column.key], 0);
-  const resizeTitle = language === "zh-CN" ? "拖动调整列宽，双击恢复默认宽度" : "Drag to resize; double-click to reset";
+  const resizeTitle = language === "vi-VN" ? "Kéo để thay đổi độ rộng cột, nhấp đúp để khôi phục mặc định" : "Drag to resize; double-click to reset";
 
   function setColumnWidth(key: AuditColumnKey, width: number) {
     setColumnWidths((current)=>resizeAuditColumn(current,key,width,tableViewportWidth));
@@ -283,14 +283,14 @@ export default function AuditLogPage() {
     window.addEventListener("pointercancel", onEnd, {once:true});
   }
 
-  return <section className="audit-page">
+  return <section data-i18n-ignore="true" className="audit-page">
     {notice && <div className={cn("audit-toast", notice.type)}>{notice.type === "ok" ? <CheckCircle2/> : <X/>}<span>{notice.text}</span></div>}
     {exporting && <div className="audit-export-progress"><Loader2 className="animate-spin"/><b>{c.exportRunning}</b></div>}
     <div className="audit-heading"><div><h1>{c.title}</h1><p>{c.desc}</p></div><div className="audit-retention"><label><span>{c.retention}</span><select value={retention} onChange={(e)=>setRetention(Number(e.target.value))}>{[1,3,7,14,30].map((day)=><option key={day} value={day}>{day}</option>)}</select></label><Button disabled={retention===savedRetention} onClick={saveRetention}><Save/>{c.save}</Button></div></div>
     <div className="audit-stats">{[[c.total,stats.total],[c.today,stats.today],[c.failed,stats.failed],[c.system,stats.system]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{Number(value||0).toLocaleString()}</strong></div>)}</div>
     <div className="audit-toolbar">
       <div className="audit-search"><Search/><input value={filters.search} onChange={(e)=>updateFilter("search",e.target.value)} placeholder={c.search}/></div>
-	  <label className="audit-filter-field"><span>{language === "zh-CN" ? "邮箱账户" : "Account Email"}</span><input type="email" value={filters.email} onChange={(e)=>updateFilter("email",e.target.value)} placeholder="name@example.com"/></label>
+      <label className="audit-filter-field"><span>{language === "vi-VN" ? "Email tài khoản" : "Account Email"}</span><input type="email" value={filters.email} onChange={(e)=>updateFilter("email",e.target.value)} placeholder="name@example.com"/></label>
       <AuditSelect label={c.type} value={filters.log_type} values={selectOptions("log_type")} all={c.all} onChange={(v)=>updateFilter("log_type",v)}/>
       <AuditSelect label={c.category} value={filters.category} values={selectOptions("category")} all={c.all} onChange={(v)=>updateFilter("category",v)}/>
       <AuditSelect label={c.action} value={filters.action} values={selectOptions("action")} all={c.all} onChange={(v)=>updateFilter("action",v)}/>

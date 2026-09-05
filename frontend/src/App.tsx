@@ -15,7 +15,7 @@ import PaymentManagement from "@/pages/PaymentManagement";
 function words(language: string) {
   return language === "en-US"
     ? { app: "SunnyRegister", sub: "GPT account registration manager", home: "Studio", settings: "Settings", loginTitle: "Welcome back", loginDesc: "Enter your administrator credentials.", user: "Username", pass: "Password", submit: "Sign in", checking: "Checking...", failed: "Login failed", loading: "Loading...", logout: "Sign out" }
-    : { app: "SunnyRegister", sub: "GPT 账号注册与管理", home: "工作台", settings: "设置", loginTitle: "欢迎回来", loginDesc: "请输入管理员账号与密码。", user: "用户名", pass: "密码", submit: "登录", checking: "验证中...", failed: "登录失败", loading: "加载中...", logout: "退出登录" };
+    : { app: "SunnyRegister", sub: "Quản lý đăng ký và tài khoản GPT", home: "Bàn làm việc", settings: "Cài đặt", loginTitle: "Chào mừng trở lại", loginDesc: "Nhập tài khoản và mật khẩu quản trị viên.", user: "Tên người dùng", pass: "Mật khẩu", submit: "Đăng nhập", checking: "Đang xác minh...", failed: "Đăng nhập thất bại", loading: "Đang tải...", logout: "Đăng xuất" };
 }
 
 function TopBar({ theme, setTheme, onLogout }: { theme: string; setTheme: (v: string) => void; onLogout: () => Promise<void> }) {
@@ -26,10 +26,10 @@ function TopBar({ theme, setTheme, onLogout }: { theme: string; setTheme: (v: st
   useTopBarGsap(headerRef, `${location.pathname}:${language}`);
   const menus = language === "en-US"
     ? [["/", "Workbench"], ["/mailbox", "Mailbox"], ["/phone", "SMS"], ["/sub2api", "Reverse"], ["/proxy", "Proxy"], ["/session", "Account Management"], ["/checkout", "Checkout Links"], ["/payments", "Payments"], ["/audit", "Audit Logs"]]
-    : [["/", "工作台"], ["/mailbox", "邮箱配置"], ["/phone", "接码配置"], ["/sub2api", "反代配置"], ["/proxy", "代理配置"], ["/session", "账户管理"], ["/checkout", "提链管理"], ["/payments", "支付管理"], ["/audit", "日志管理"]];
+    : [["/", "Bàn làm việc"], ["/mailbox", "Cấu hình email"], ["/phone", "Cấu hình SMS"], ["/sub2api", "Cấu hình reverse proxy"], ["/proxy", "Cấu hình proxy"], ["/session", "Quản lý tài khoản"], ["/checkout", "Quản lý liên kết"], ["/payments", "Quản lý thanh toán"], ["/audit", "Quản lý nhật ký"]];
   const navClass = (active: boolean) => cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all", active ? "bg-[var(--accent)] text-white shadow-[var(--shadow-glow)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]");
   return (
-    <header ref={headerRef} className="sticky top-0 z-[300] border-b border-[var(--border)] bg-[var(--bg-shell)]/80 backdrop-blur-2xl">
+    <header ref={headerRef} data-i18n-ignore="true" className="sticky top-0 z-[300] border-b border-[var(--border)] bg-[var(--bg-shell)]/80 backdrop-blur-2xl">
       <div className="app-shell mx-auto grid grid-cols-[1fr_auto] items-center gap-4 py-3 lg:grid-cols-[280px_minmax(0,1fr)_160px]">
         <div className="flex min-w-0 shrink-0 items-center gap-3 justify-self-start">
           <div className="brand-mark"><Link2 className="h-5 w-5" /></div>
@@ -42,8 +42,8 @@ function TopBar({ theme, setTheme, onLogout }: { theme: string; setTheme: (v: st
           })}
         </nav>
         <div className="flex shrink-0 items-center justify-end gap-2 justify-self-end">
-          <button className="round-tool" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title={theme}>{theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</button>
-          <button className="round-tool min-w-12 px-3 text-xs font-bold" onClick={toggleLanguage}><Languages className="h-4 w-4" />{language === "zh-CN" ? "中" : "EN"}</button>
+          <button className="round-tool" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title={language === "vi-VN" ? (theme === "light" ? "Bật giao diện tối" : "Bật giao diện sáng") : (theme === "light" ? "Use dark theme" : "Use light theme")} aria-label={language === "vi-VN" ? (theme === "light" ? "Bật giao diện tối" : "Bật giao diện sáng") : (theme === "light" ? "Use dark theme" : "Use light theme")}>{theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</button>
+          <button className="round-tool min-w-12 px-3 text-xs font-bold" onClick={toggleLanguage} title={language === "vi-VN" ? "Chuyển sang English" : "Chuyển sang tiếng Việt"}><Languages className="h-4 w-4" />{language === "vi-VN" ? "VI" : "EN"}</button>
           <button className="round-tool" title={c.logout} aria-label={c.logout} onClick={onLogout}><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
