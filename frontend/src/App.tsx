@@ -29,7 +29,7 @@ function TopBar({ theme, setTheme, onLogout }: { theme: string; setTheme: (v: st
     : [["/", "Bàn làm việc"], ["/mailbox", "Cấu hình email"], ["/phone", "Cấu hình SMS"], ["/sub2api", "Cấu hình reverse proxy"], ["/proxy", "Cấu hình proxy"], ["/session", "Quản lý tài khoản"], ["/checkout", "Quản lý liên kết"], ["/payments", "Quản lý thanh toán"], ["/audit", "Quản lý nhật ký"]];
   const navClass = (active: boolean) => cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all", active ? "bg-[var(--accent)] text-white shadow-[var(--shadow-glow)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]");
   return (
-    <header ref={headerRef} data-i18n-ignore="true" className="sticky top-0 z-[300] border-b border-[var(--border)] bg-[var(--bg-shell)]/80 backdrop-blur-2xl">
+    <header ref={headerRef} className="sticky top-0 z-[300] border-b border-[var(--border)] bg-[var(--bg-shell)]/80 backdrop-blur-2xl">
       <div className="app-shell mx-auto grid grid-cols-[1fr_auto] items-center gap-4 py-3 lg:grid-cols-[280px_minmax(0,1fr)_160px]">
         <div className="flex min-w-0 shrink-0 items-center gap-3 justify-self-start">
           <div className="brand-mark"><Link2 className="h-5 w-5" /></div>

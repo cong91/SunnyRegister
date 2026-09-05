@@ -1404,7 +1404,7 @@ export default function SunnyRegister() {
   useSunnyGsap(rootRef, page);
   const [toast, setToast] = useState<ToastState>(null);
   const notify = (type: "ok" | "fail", text: string) => { setToast({ type, text }); };
-  return <div ref={rootRef} data-i18n-ignore="true" className="sunny-page"><Toast toast={toast} clear={() => setToast(null)} />
+  return <div ref={rootRef} className="sunny-page"><Toast toast={toast} clear={() => setToast(null)} />
     <CachedPage active={page === "workbench"} className="space-y-6">{visitedPages.has("workbench") && <><Hero t={t} /><Workbench t={t} notify={notify} /></>}</CachedPage>
     <CachedPage active={page === "mailbox"} className="space-y-6">{visitedPages.has("mailbox") && <MailboxConfig t={t} notify={notify} />}</CachedPage>
     <CachedPage active={page === "phone"} className="space-y-6">{visitedPages.has("phone") && <PhoneConfig t={t} notify={notify} />}</CachedPage>

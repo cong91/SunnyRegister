@@ -283,7 +283,7 @@ export default function AuditLogPage() {
     window.addEventListener("pointercancel", onEnd, {once:true});
   }
 
-  return <section data-i18n-ignore="true" className="audit-page">
+  return <section className="audit-page">
     {notice && <div className={cn("audit-toast", notice.type)}>{notice.type === "ok" ? <CheckCircle2/> : <X/>}<span>{notice.text}</span></div>}
     {exporting && <div className="audit-export-progress"><Loader2 className="animate-spin"/><b>{c.exportRunning}</b></div>}
     <div className="audit-heading"><div><h1>{c.title}</h1><p>{c.desc}</p></div><div className="audit-retention"><label><span>{c.retention}</span><select value={retention} onChange={(e)=>setRetention(Number(e.target.value))}>{[1,3,7,14,30].map((day)=><option key={day} value={day}>{day}</option>)}</select></label><Button disabled={retention===savedRetention} onClick={saveRetention}><Save/>{c.save}</Button></div></div>

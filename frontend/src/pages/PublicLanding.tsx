@@ -225,7 +225,7 @@ export default function PublicLanding({ onLogin, logoutNotice = false, onNoticeD
   }
 
   return (
-    <div ref={rootRef} data-i18n-ignore="true" className="public-landing">
+    <div ref={rootRef} className="public-landing">
       {logoutNotice && (
         <div className="public-toast" role="status">
           <CheckCircle2 aria-hidden="true" />

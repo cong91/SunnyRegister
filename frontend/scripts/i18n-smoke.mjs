@@ -14,6 +14,9 @@ const localizerSource = fs.readFileSync(new URL("../src/lib/text-localizer.ts", 
 assert.match(localizerSource, /reverse proxy/u);
 assert.match(localizerSource, /nhận mã SMS/u);
 
+const pageSource = fs.readFileSync(new URL("../src/pages/SunnyRegister.tsx", import.meta.url), "utf8");
+assert.doesNotMatch(pageSource, /data-i18n-ignore/u);
+
 const mapSource = fs.readFileSync(new URL("../src/lib/vi-text-map.ts", import.meta.url), "utf8");
 assert.doesNotMatch(mapSource, /^  ".*(?:<|className|onChange|value=|return |import ).*":/mu);
 assert.doesNotMatch(mapSource, /sunny_token/iu);
