@@ -45,6 +45,7 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       APP_PASSWORD: ${APP_PASSWORD:-}
+      SUNNY_PUBLIC_ORIGIN: ${SUNNY_PUBLIC_ORIGIN:-http://127.0.0.1:5173}
       ADMIN_PASSWORD_FILE: /app/data/admin_password.txt
       DATABASE_URL: postgresql://${POSTGRES_USER:-sunnyregister}:${POSTGRES_PASSWORD:-sunnyregister}@postgres:5432/${POSTGRES_DB:-sunnyregister}?sslmode=disable
       PYTHON_WORKER_URL: http://python-worker:8765
