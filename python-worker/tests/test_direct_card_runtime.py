@@ -267,10 +267,11 @@ def test_direct_card_credential_login_runs_protocol_flow(monkeypatch):
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
-    def fake_login(account, proxy_url, log=None, *, existing_account=False, **_kwargs):
+    def fake_login(account, proxy_url, log=None, *, existing_account=False, challenge_strategy="native_headless", **_kwargs):
         captured["account"] = account
         captured["proxy_url"] = proxy_url
         captured["existing_account"] = existing_account
+        captured["challenge_strategy"] = challenge_strategy
         return {"access_token": _token("account_fixture"), "account_id": "account_fixture"}
 
     mailbox_module = types.ModuleType("sunny_core.mailbox")
@@ -298,3 +299,4 @@ def test_direct_card_credential_login_runs_protocol_flow(monkeypatch):
     assert account.totp_secret == "JBSW"
     assert captured["proxy_url"] == "14.224.199.205:41230:aqPdHe:JWWNEX"
     assert captured["existing_account"] is True
+    assert captured["challenge_strategy"] == "sentinel_protocol"

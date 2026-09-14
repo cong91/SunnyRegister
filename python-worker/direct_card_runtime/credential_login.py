@@ -23,6 +23,9 @@ def login_access_token(payload: dict[str, Any]) -> dict[str, Any]:
     from sunny_core.mailbox import MailAccount
     from sunny_core.protocol_auth import login_or_register_protocol
 
+    challenge_strategy = str(payload.get("challenge_strategy") or "sentinel_protocol").strip().lower()
+    if challenge_strategy not in {"native_headless", "sentinel_protocol"}:
+        challenge_strategy = "sentinel_protocol"
     account = MailAccount(
         email=email,
         password="",
@@ -32,7 +35,12 @@ def login_access_token(payload: dict[str, Any]) -> dict[str, Any]:
         chatgpt_password=password,
         totp_secret=totp_secret,
     )
-    result = login_or_register_protocol(account, proxy_url, existing_account=True)
+    result = login_or_register_protocol(
+        account,
+        proxy_url,
+        existing_account=True,
+        challenge_strategy=challenge_strategy,
+    )
     access_token = str(result.get("access_token") or "").strip()
     if not access_token:
         raise RuntimeError("protocol login finished without an access token")
