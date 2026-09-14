@@ -20,10 +20,25 @@ from standalone_flow import (
 )
 from standalone_core.fingerprint_store import optimize_fingerprint_store
 
+import card_pool
+
 ROOT = Path(__file__).resolve().parent
 ALIGNED_BATCH_LIMIT = 50
 TASKS: dict[str, dict[str, Any]] = {}
 TASKS_LOCK = threading.Lock()
+
+
+def _active_task_ids() -> set[str]:
+    with TASKS_LOCK:
+        return {
+            task_id
+            for task_id, task in TASKS.items()
+            if str(task.get("status") or "") in {"queued", "running"}
+        }
+
+
+card_pool.set_active_task_provider(_active_task_ids)
+
 STEP_EVENT_RE = re.compile(r"^FLOW_STEP:([a-z_]+):(start|done|error):(.*)$")
 STEP_LABELS = {
     "proxy": "分配代理",
@@ -209,8 +224,14 @@ def _run_task(
         started_at=started_at_ns / 1_000_000_000,
         started_at_ns=started_at_ns,
     )
+    pool_card: dict[str, str] = {}
     try:
+        if mode != "link_only" and not str(payload.get("payment_method_id") or "").strip():
+            pool_card = card_pool.reserve(task_id, account=str(payload.get("email") or ""))
+            payload = {**payload, "card": pool_card}
         result = run_flow(payload, logger=log)
+        if pool_card:
+            card_pool.settle(task_id, ok=bool(result.get("ok")))
         _set_task(
             task_id,
             status="done",
@@ -221,6 +242,8 @@ def _run_task(
         )
     except Exception as exc:  # noqa: BLE001
         safe_error = _safe_error(exc)
+        if pool_card:
+            card_pool.settle(task_id, ok=False, error=safe_error)
         _fail_running_step(task_id, safe_error)
         _set_task(
             task_id,

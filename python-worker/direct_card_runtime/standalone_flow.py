@@ -16,7 +16,7 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
-from standalone_core.card_payment import CardPaymentConfig, run_card_payment
+from standalone_core.card_payment import CardPaymentConfig, CardPaymentError, _card_fields, run_card_payment
 from standalone_core.fingerprint_store import (
     extractor_profile,
     get_account_fingerprint,
@@ -256,8 +256,15 @@ def validate_payload(payload: dict[str, Any], *, require_payment_method: bool = 
         bind_pool = list(promo_pool)
     needs_payment_method = require_payment_method and mode != "link_only"
     payment_method_id = _text(payload.get("payment_method_id"))
-    if needs_payment_method and not re.fullmatch(r"pm_[A-Za-z0-9_-]+", payment_method_id):
-        raise ValueError("missing or invalid PaymentMethod")
+    card: dict[str, str] = {}
+    if needs_payment_method and not payment_method_id:
+        source_card = payload.get("card")
+        if not isinstance(source_card, dict) or not source_card:
+            raise ValueError("missing PaymentMethod or pool card")
+        try:
+            card = _card_fields(source_card)
+        except CardPaymentError as exc:
+            raise ValueError(f"invalid pool card: {exc}") from exc
     billing = _billing_payload(payload.get("billing"), required=needs_payment_method)
     if needs_payment_method and billing.get("country") != market_country:
         raise ValueError(
@@ -273,6 +280,7 @@ def validate_payload(payload: dict[str, Any], *, require_payment_method: bool = 
         "market_currency": market_currency,
         "flow_mode": mode,
         "payment_method_id": payment_method_id,
+        "card": card,
         "card_last4": re.sub(r"\D", "", _text(payload.get("card_last4")))[-4:],
         "billing": billing,
     }
@@ -537,6 +545,7 @@ def run_flow(payload: dict[str, Any], logger: Callable[[str], None] = lambda _me
                     currency=currency,
                     promo_campaign="",
                     billing=billing,
+                    card=dict(ctx.get("card") or {}),
                     payment_method_id=ctx["payment_method_id"],
                     card_last4=ctx["card_last4"],
                     flow_mode=ctx["flow_mode"],

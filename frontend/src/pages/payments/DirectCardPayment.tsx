@@ -9,6 +9,15 @@ import { apiFetch, cn, triggerBrowserDownload } from "@/lib/utils";
 type Row = Record<string, any>;
 type FlowMode = "full" | "bind_only" | "link_pay" | "link_only";
 type ImportMode = "token" | "credential";
+type PoolCard = {
+  card_id: string;
+  last4: string;
+  exp_month: string;
+  exp_year: string;
+  status: "available" | "reserved" | "used" | "failed";
+  account: string;
+  error: string;
+};
 type CardElement = { mount: (target: HTMLElement) => void; unmount: () => void; on: (event: string, callback: (value: Row) => void) => void };
 type StripeClient = {
   elements: () => { create: (type: string, options?: Row) => CardElement };
@@ -154,6 +163,9 @@ export default function DirectCardPayment() {
   const [accounts, setAccounts] = useState<DirectAccount[]>(loadAccounts);
   const [importText, setImportText] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>(settings.importMode === "credential" ? "credential" : "token");
+  const [cards, setCards] = useState<PoolCard[]>([]);
+  const [cardPoolText, setCardPoolText] = useState("");
+  const [usePool, setUsePool] = useState(Boolean(settings.useCardPool));
   const [bindProxies, setBindProxies] = useState(String(settings.bindProxies || ""));
   const [promoProxies, setPromoProxies] = useState(String(settings.promoProxies || ""));
   const [marketCountry, setMarketCountry] = useState(String(settings.marketCountry || "VN").toUpperCase());
@@ -178,13 +190,16 @@ export default function DirectCardPayment() {
   const effectivePromoPool = promoPool.length ? promoPool : bindPool;
   const effectiveBindPool = bindPool.length ? bindPool : promoPool;
   const activeCount = jobs.filter((item) => ACTIVE_TASKS.has(String(item.status))).length;
+  const poolAvailable = cards.filter((item) => item.status === "available").length;
+  const poolMode = usePool && poolAvailable > 0;
 
   useEffect(() => { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts)); }, [accounts]);
   useEffect(() => { accountsRef.current = accounts; }, [accounts]);
-  useEffect(() => { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ bindProxies, promoProxies, marketCountry, concurrency, importMode })); }, [bindProxies, promoProxies, marketCountry, concurrency, importMode]);
+  useEffect(() => { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ bindProxies, promoProxies, marketCountry, concurrency, importMode, useCardPool: usePool })); }, [bindProxies, promoProxies, marketCountry, concurrency, importMode, usePool]);
   useEffect(() => {
     void refreshJobs();
-    const timer = window.setInterval(() => { void refreshJobs(); }, 3000);
+    void refreshCards();
+    const timer = window.setInterval(() => { void refreshJobs(); void refreshCards(); }, 3000);
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => () => Object.values(cardElements.current).forEach((element) => element.unmount()), []);
@@ -195,6 +210,32 @@ export default function DirectCardPayment() {
 
   async function refreshJobs() {
     try { const result = await api("/jobs"); setJobs(result.jobs || []); } catch { /* worker may be offline during page load */ }
+  }
+
+  async function refreshCards() {
+    try { const result = await api("/cards/list"); setCards(result.cards || []); } catch { /* worker may be offline during page load */ }
+  }
+
+  async function importCards() {
+    const lines = cardPoolText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) return setMessage("请输入卡片行，格式：卡号 | MM/YY | CVC");
+    setBusy(true);
+    try {
+      const result = await api("/cards/add", { lines });
+      const invalidNote = (result.invalid || []).map((item: Row) => `${item.line}：${item.error}`).join("；");
+      setCardPoolText("");
+      const duplicateNote = (result.duplicates || []).length ? ` · 重复 ${(result.duplicates || []).length}` : "";
+      setMessage(`已导入 ${(result.added || []).length} 张卡片到卡池${duplicateNote}${invalidNote ? ` · ${invalidNote}` : ""}`);
+      await refreshCards();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "导入卡池失败"); }
+    finally { setBusy(false); }
+  }
+
+  async function removeCard(cardId: string) {
+    setBusy(true);
+    try { await api("/cards/delete", { card_ids: [cardId] }); await refreshCards(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "删除卡片失败"); }
+    finally { setBusy(false); }
   }
 
   async function prepareAccounts(additions: DirectAccount[]) {
@@ -365,21 +406,36 @@ export default function DirectCardPayment() {
   async function run(mode: FlowMode) {
     const chosen = accounts.filter((item) => item.selected);
     if (!chosen.length || !effectivePromoPool.length) return setMessage("请选择账号并填写任意一个代理池");
-    if (mode !== "link_only" && (!effectiveBindPool.length || !cardReady || !Object.values(cardComplete).every(Boolean))) return setMessage("请填写优惠地区代理池并完成安全卡片输入");
+    if (mode !== "link_only") {
+      if (!effectiveBindPool.length) return setMessage("请填写绑卡代理池");
+      if (!poolMode && (!cardReady || !Object.values(cardComplete).every(Boolean))) return setMessage("请完成安全卡片输入，或在卡池导入卡片并启用卡池");
+      if (poolMode && poolAvailable < chosen.length) setMessage(`注意：卡池可用卡片 ${poolAvailable} 张，少于选中账号 ${chosen.length} 个，超出部分将失败`);
+    }
     setBusy(true); setStopping(false); stopRef.current = false;
     let completed = 0; let succeeded = 0;
     try {
+      if (mode !== "link_only" && poolMode) {
+        const missingBilling = chosen.filter((item) => !hasBilling(item.billing, marketCountry));
+        if (missingBilling.length) {
+          setMessage(`正在为 ${missingBilling.length} 个账号补充账单地址`);
+          const billing = await fetchBillingBatch(missingBilling, marketCountry);
+          chosen.forEach((item) => {
+            const found = billing.get(item.id);
+            if (found) { item.billing = found; patchAccount(item.id, { billing: found }); }
+          });
+        }
+      }
       for (let offset = 0; offset < chosen.length && !stopRef.current; offset += concurrency) {
         const wave = chosen.slice(offset, offset + concurrency);
         const prepared: Array<{ account: DirectAccount; card: Row | null }> = [];
         for (let index = 0; index < wave.length && !stopRef.current; index += 1) {
           const account = wave[index];
-          patchAccount(account.id, { status: "running", stage: mode === "link_only" ? "提链代理已就绪" : "正在生成安全支付方式", error: "" });
-          try { prepared.push({ account, card: mode === "link_only" ? null : await createPaymentMethod(account) }); }
+          patchAccount(account.id, { status: "running", stage: mode === "link_only" ? "提链代理已就绪" : poolMode ? "等待卡池分配卡片" : "正在生成安全支付方式", error: "" });
+          try { prepared.push({ account, card: mode === "link_only" || poolMode ? null : await createPaymentMethod(account) }); }
           catch (error) { completed += 1; patchAccount(account.id, { status: "error", stage: "生成支付方式失败", error: error instanceof Error ? error.message : String(error) }); }
         }
         if (!prepared.length || stopRef.current) continue;
-        const batch = await api("/jobs/batch", { start_delay_ms: 250, tasks: prepared.map(({ account, card }, index) => ({ client_id: account.id, payload: { access_token: account.token, market_country: marketCountry, market_currency: MARKET_CURRENCIES[marketCountry], flow_mode: mode, promo_proxy_pool: [effectivePromoPool[(offset + index) % effectivePromoPool.length]], ...(mode === "link_only" ? {} : { payment_method_id: card?.id, card_last4: card?.last4, billing: card?.billing, bind_proxy_pool: [effectiveBindPool[(offset + index) % effectiveBindPool.length]] }) } })) });
+        const batch = await api("/jobs/batch", { start_delay_ms: 250, tasks: prepared.map(({ account, card }, index) => ({ client_id: account.id, payload: { access_token: account.token, market_country: marketCountry, market_currency: MARKET_CURRENCIES[marketCountry], flow_mode: mode, promo_proxy_pool: [effectivePromoPool[(offset + index) % effectivePromoPool.length]], ...(mode === "link_only" ? {} : { billing: poolMode ? account.billing : card?.billing, bind_proxy_pool: [effectiveBindPool[(offset + index) % effectiveBindPool.length]], ...(poolMode ? {} : { payment_method_id: card?.id, card_last4: card?.last4 }) }) } })) });
         const ids = new Map<string, string>((batch.items || []).map((item: Row) => [String(item.client_id), String(item.task_id)]));
         const results = await Promise.allSettled(prepared.map(({ account }) => pollTask(account, ids.get(account.id) || "")));
         results.forEach((result, index) => { completed += 1; if (result.status === "fulfilled") succeeded += 1; else patchAccount(prepared[index].account.id, { status: "error", taskId: "", stage: "任务执行失败", error: result.reason instanceof Error ? result.reason.message : String(result.reason) }); });
@@ -402,11 +458,12 @@ export default function DirectCardPayment() {
     <div className="direct-card-setup">
       <section className="gopay-panel"><header><h3>安全卡片</h3><span className={cn("direct-card-health", cardReady && "is-ready")}><ShieldCheck />{cardReady ? "Stripe 已连接" : "尚未加载"}</span></header><div className="direct-card-fields"><label className="wide"><span>卡号</span><div ref={numberHost} className="direct-card-element" /></label><label><span>有效期</span><div ref={expiryHost} className="direct-card-element" /></label><label><span>CVC</span><div ref={cvcHost} className="direct-card-element" /></label></div><div className="gopay-field-foot"><small>每个账号自动获取独立账单地址</small><Button size="sm" onClick={() => void loadCard()} disabled={busy || cardReady || !selected.length || !effectiveBindPool.length || !effectivePromoPool.length}><CreditCard className="mr-1 h-3.5 w-3.5" />加载安全卡片</Button></div></section>
       <section className="gopay-panel"><header><h3>导入账号</h3><span className="direct-card-count">{accounts.length} 个账号</span></header><div className="gopay-segmented direct-card-modes" role="tablist" aria-label="导入模式"><button type="button" className={importMode === "token" ? "active" : ""} onClick={() => changeImportMode("token")}>Access Token</button><button type="button" className={importMode === "credential" ? "active" : ""} onClick={() => changeImportMode("credential")}>账号 | 密码 | 2FA</button></div><textarea className="direct-card-import" value={importText} onChange={(event) => setImportText(event.target.value)} rows={5} spellCheck={false} placeholder={importMode === "credential" ? "每行一个：邮箱 | 密码 | 2FA密钥（无 2FA 可省略）" : "每行一个 Access Token"} /><div className="gopay-row-actions">{importMode === "credential" ? <Button size="sm" onClick={() => void importCredentialAccounts(importText)} disabled={!importText.trim() || busy}><LogIn className="mr-1 h-3.5 w-3.5" />登录并导入</Button> : <Button size="sm" onClick={() => void importAccounts(importText)} disabled={!importText.trim() || busy}><UserRound className="mr-1 h-3.5 w-3.5" />导入列表</Button>}<label className="direct-card-file"><FileUp />从文件导入<input type="file" accept=".txt,.json" onChange={(event) => void handleFile(event)} /></label></div></section>
+      <section className="gopay-panel"><header><h3>卡池 · 1卡1账号</h3><span className="direct-card-count">可用 {poolAvailable}/{cards.length} {poolMode ? "· 已启用" : ""}</span></header><textarea className="direct-card-import" value={cardPoolText} onChange={(event) => setCardPoolText(event.target.value)} rows={4} spellCheck={false} placeholder="每行一张卡：卡号 | MM/YY | CVC" /><div className="gopay-row-actions"><Button size="sm" onClick={() => void importCards()} disabled={!cardPoolText.trim() || busy}><CreditCard className="mr-1 h-3.5 w-3.5" />导入卡池</Button><Button size="sm" variant={usePool ? "default" : "outline"} onClick={() => setUsePool((value) => !value)} disabled={busy}>{usePool ? "使用卡池：开" : "使用卡池：关"}</Button><Button size="sm" variant="outline" onClick={() => void refreshCards()} disabled={busy}><RefreshCw className="mr-1 h-3.5 w-3.5" />刷新</Button></div>{cards.length ? <div className="gopay-table-wrap"><table><thead><tr><th>卡片</th><th>状态</th><th>分配账号</th><th>备注</th><th></th></tr></thead><tbody>{cards.map((card) => <tr key={card.card_id}><td><strong>**** {card.last4}</strong><small className="direct-card-subtext">{card.exp_month}/{card.exp_year}</small></td><td><span className={cn("gopay-status", card.status === "available" ? "is-success" : card.status === "reserved" ? "is-running" : card.status === "used" ? "is-idle" : "is-error")}>{card.status === "available" ? "可用" : card.status === "reserved" ? "已预留" : card.status === "used" ? "已使用" : "已失败"}</span></td><td className="gopay-message">{card.account || "-"}</td><td className="gopay-message">{card.error || "-"}</td><td>{card.status !== "reserved" ? <button className="direct-card-link" type="button" onClick={() => void removeCard(card.card_id)} title="从卡池删除"><Trash2 /></button> : null}</td></tr>)}</tbody></table></div> : null}</section>
     </div>
       <section className="gopay-panel"><header><h3>支付市场与双代理池</h3><span className="direct-card-count">{marketCountry}/{MARKET_CURRENCIES[marketCountry]} · 绑卡 {effectiveBindPool.length} · 提链 {effectivePromoPool.length}</span></header><div className="direct-card-proxies"><label><span>支付市场</span><select value={marketCountry} onChange={(event) => changeMarket(event.target.value)} disabled={busy}><option value="VN">VN · Việt Nam · VND</option><option value="US">US · United States · USD</option><option value="PH">PH · Philippines · PHP</option><option value="TH">TH · Thailand · THB</option><option value="ID">ID · Indonesia · IDR</option><option value="GB">GB · United Kingdom · GBP</option><option value="DE">DE · Germany · EUR</option></select></label><label><span>绑卡与支付 · {marketCountry} 节点</span><textarea value={bindProxies} onChange={(event) => setBindProxies(event.target.value)} rows={4} placeholder="每行一个 HTTP、HTTPS 或 SOCKS 代理；只填一个池也可以" /></label><label><span>提链 · {marketCountry} 节点</span><textarea value={promoProxies} onChange={(event) => setPromoProxies(event.target.value)} rows={4} placeholder="每行一个 HTTP、HTTPS 或 SOCKS 代理；只填一个池也可以" /></label></div></section>
     <div className="direct-card-toolbar"><label><span>并发</span><input type="number" min={1} max={50} value={concurrency} onChange={(event) => setConcurrency(Math.max(1, Math.min(50, Math.trunc(Number(event.target.value) || 1))))} /></label><Button onClick={() => void run("full")} disabled={busy}><Play className="mr-1 h-4 w-4" />提链 + 绑卡 + 提链 + 支付</Button><Button variant="outline" onClick={() => void run("bind_only")} disabled={busy}>提链 + 绑卡</Button><Button variant="outline" onClick={() => void run("link_pay")} disabled={busy}>提链 + 支付</Button><Button variant="outline" onClick={() => void run("link_only")} disabled={busy}>仅提链</Button><Button variant="outline" onClick={stop} disabled={!busy || stopping}><Square className="mr-1 h-3.5 w-3.5" />停止</Button></div>
     <div className={cn("direct-card-message", busy && "is-running")}>{busy && <Loader2 className="animate-spin" />}<span>{message}</span></div>
     <section className="gopay-panel"><header><h3>账号任务 · {accounts.length}</h3><div className="gopay-row-actions"><Button size="sm" variant="outline" onClick={exportCsv} disabled={!accounts.length}><Download className="mr-1 h-3.5 w-3.5" />导出 CSV</Button><Button size="sm" variant="outline" onClick={() => setAccounts((current) => current.filter((item) => !item.selected))} disabled={busy || !selected.length}><Trash2 className="mr-1 h-3.5 w-3.5" />删除选中</Button><Button size="sm" variant="outline" onClick={() => { if (window.confirm("确定清空直卡协议账号列表吗？")) setAccounts([]); }} disabled={busy || !accounts.length}>清空列表</Button><Button size="sm" variant="outline" onClick={() => void refreshJobs()}><RefreshCw className="mr-1 h-3.5 w-3.5" />刷新</Button></div></header><div className="gopay-table-wrap"><table><thead><tr><th><input type="checkbox" checked={accounts.length > 0 && selected.length === accounts.length} onChange={(event) => setAccounts((current) => current.map((item) => ({ ...item, selected: event.target.checked })))} /></th><th>账号</th><th>环境</th><th>当前步骤</th><th>状态</th><th>Checkout</th><th>错误</th></tr></thead><tbody>{accounts.length ? accounts.map((account) => <tr key={account.id}><td><input type="checkbox" checked={account.selected} onChange={(event) => patchAccount(account.id, { selected: event.target.checked })} disabled={busy} /></td><td><strong>{account.email || "未命名账号"}</strong><small className="direct-card-subtext">{account.accountId}</small></td><td>{account.fingerprintId ? <span className="direct-card-fingerprint"><ShieldCheck />{account.fingerprintId}</span> : "分配中"}</td><td className="gopay-message">{account.stage || "等待执行"}</td><td><span className={cn("gopay-status", `is-${account.status}`)}>{account.status === "success" ? "成功" : account.status === "error" ? "失败" : account.status === "running" ? "进行中" : "待执行"}</span></td><td>{account.link ? <button className="direct-card-link" type="button" onClick={() => void navigator.clipboard.writeText(account.link)} title="复制 Checkout 链接"><Link2 />复制链接</button> : "-"}</td><td className="gopay-message">{account.error || "-"}</td></tr>) : <tr><td colSpan={7}><div className="gopay-empty"><CreditCard /><strong>暂无直卡协议账号</strong><span>导入账号后即可分配环境并创建任务</span></div></td></tr>}</tbody></table></div></section>
-    <section className="direct-card-runtime"><div><CheckCircle2 /><span><strong>协议核心已隔离</strong><small>直卡任务使用独立运行时与数据文件</small></span></div><div><XCircle /><span><strong>原始卡片数据不落库</strong><small>卡片字段由 Stripe Elements 托管</small></span></div></section>
+    <section className="direct-card-runtime"><div><CheckCircle2 /><span><strong>协议核心已隔离</strong><small>直卡任务使用独立运行时与数据文件</small></span></div><div><XCircle /><span><strong>手动卡片不落库</strong><small>卡片字段由 Stripe Elements 托管</small></span></div><div><CreditCard /><span><strong>卡池存储于服务端数据卷</strong><small>1卡1账号，绑卡成功后不再复用</small></span></div></section>
   </div>;
 }

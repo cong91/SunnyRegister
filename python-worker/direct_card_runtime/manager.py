@@ -72,6 +72,32 @@ def login(payload: dict[str, Any]) -> dict[str, Any]:
     return login_access_token(payload)
 
 
+def cards_list() -> dict[str, Any]:
+    from . import card_pool
+
+    return {**card_pool.list_cards(), "counts": card_pool.counts()}
+
+
+def cards_add(payload: dict[str, Any]) -> dict[str, Any]:
+    from . import card_pool
+
+    lines = payload.get("lines")
+    if isinstance(lines, str):
+        lines = lines.splitlines()
+    if not isinstance(lines, list) or not [line for line in lines if str(line or "").strip()]:
+        raise ValueError("没有可导入的卡片行")
+    return card_pool.add_cards(lines)
+
+
+def cards_remove(payload: dict[str, Any]) -> dict[str, Any]:
+    from . import card_pool
+
+    card_ids = payload.get("card_ids")
+    if not isinstance(card_ids, list) or not card_ids:
+        raise ValueError("card_ids must be a non-empty list")
+    return card_pool.remove_cards(card_ids)
+
+
 def start(payload: dict[str, Any]) -> dict[str, Any]:
     protocol_server.validate_payload(payload, require_payment_method=True)
     task_id = uuid.uuid4().hex

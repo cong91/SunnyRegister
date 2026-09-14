@@ -405,6 +405,15 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/direct-card/login":
                 self.send(200, _direct_card_manager().login(data))
                 return
+            if path == "/api/direct-card/cards/list":
+                self.send(200, _direct_card_manager().cards_list())
+                return
+            if path == "/api/direct-card/cards/add":
+                self.send(200, _direct_card_manager().cards_add(data))
+                return
+            if path == "/api/direct-card/cards/delete":
+                self.send(200, _direct_card_manager().cards_remove(data))
+                return
             if path == "/api/direct-card/fingerprint":
                 self.send(200, _direct_card_manager().allocate_fingerprint(data))
                 return

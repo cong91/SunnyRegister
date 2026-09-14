@@ -48,6 +48,7 @@ def _configure_gopay_runtime() -> None:
     os.environ.setdefault("OPAI_GOPAY_SUPPORT_BODY_CORPUS", str(runtime_dir / "config" / "support_sdk_body_corpus.json"))
     os.environ.setdefault("PAYPAL_AGREEMENT_CONFIG_PATH", str(gopay_data / "paypal_agreement.json"))
     os.environ.setdefault("DIRECT_CARD_FINGERPRINT_STORE_PATH", str(gopay_data / "direct_card_fingerprints.json"))
+    os.environ.setdefault("DIRECT_CARD_CARD_POOL_PATH", str(gopay_data / "direct_card_cards.json"))
 
 
 _configure_gopay_runtime()

@@ -106,6 +106,56 @@ def test_direct_card_payload_accepts_bind_pool_as_shared_proxy_pool():
     assert result["bind_pool"] == result["promo_pool"]
 
 
+def test_direct_card_payload_accepts_pool_card_without_payment_method():
+    from direct_card_runtime.standalone_flow import validate_payload
+
+    result = validate_payload(
+        {
+            "access_token": _token(),
+            "flow_mode": "full",
+            "market_country": "VN",
+            "market_currency": "VND",
+            "promo_proxy_pool": ["http://127.0.0.1:8080"],
+            "bind_proxy_pool": ["http://127.0.0.1:8080"],
+            "billing": {
+                "name": "Test User",
+                "line1": "1 Nguyen Hue",
+                "city": "Ho Chi Minh City",
+                "postal_code": "700000",
+                "country": "VN",
+            },
+            "card": {"number": "4242424242424242", "exp_month": "12", "exp_year": "2027", "cvc": "123"},
+        },
+        require_payment_method=True,
+    )
+
+    assert result["payment_method_id"] == ""
+    assert result["card"]["number"].endswith("4242")
+    assert result["card"]["exp_year"] == "2027"
+
+
+def test_direct_card_payload_requires_card_or_payment_method():
+    from direct_card_runtime.standalone_flow import validate_payload
+
+    payload = {
+        "access_token": _token(),
+        "flow_mode": "full",
+        "market_country": "VN",
+        "market_currency": "VND",
+        "promo_proxy_pool": ["http://127.0.0.1:8080"],
+        "billing": {
+            "name": "Test User",
+            "line1": "1 Nguyen Hue",
+            "city": "Ho Chi Minh City",
+            "postal_code": "700000",
+            "country": "VN",
+        },
+    }
+
+    with pytest.raises(ValueError, match="missing PaymentMethod or pool card"):
+        validate_payload(payload, require_payment_method=True)
+
+
 def test_direct_card_payload_rejects_market_currency_mismatch():
     from direct_card_runtime.standalone_flow import validate_payload
 
