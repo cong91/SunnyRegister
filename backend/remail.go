@@ -141,7 +141,9 @@ func (c *remailClient) profile(ctx context.Context) (map[string]any, error) {
 }
 
 func (c *remailClient) projects(ctx context.Context) (map[string]any, error) {
-	return c.request(ctx, http.MethodGet, "/v1/open/projects", nil, nil)
+	query := url.Values{}
+	query.Set("limit", "100")
+	return c.request(ctx, http.MethodGet, "/v1/open/projects", query, nil)
 }
 
 func (c *remailClient) wallet(ctx context.Context) (map[string]any, error) {
