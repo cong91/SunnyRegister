@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import base64
 import json
+import sys
+import types
 from unittest.mock import patch
+
+import pytest
 
 
 def _token(account_id: str = "account_fixture") -> str:
@@ -243,3 +247,54 @@ def test_direct_card_address_rejects_wrong_market_response(monkeypatch):
         assert "returned US for market VN" in str(exc)
     else:
         raise AssertionError("wrong-market address response must be rejected")
+
+
+def test_direct_card_credential_login_requires_email_and_password():
+    from direct_card_runtime.credential_login import login_access_token
+
+    with pytest.raises(ValueError):
+        login_access_token({"email": "", "password": "pw"})
+    with pytest.raises(ValueError):
+        login_access_token({"email": "user@example.test", "password": ""})
+
+
+def test_direct_card_credential_login_runs_protocol_flow(monkeypatch):
+    from direct_card_runtime.credential_login import login_access_token
+
+    captured: dict[str, object] = {}
+
+    class FakeMailAccount:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    def fake_login(account, proxy_url, log=None, *, existing_account=False, **_kwargs):
+        captured["account"] = account
+        captured["proxy_url"] = proxy_url
+        captured["existing_account"] = existing_account
+        return {"access_token": _token("account_fixture"), "account_id": "account_fixture"}
+
+    mailbox_module = types.ModuleType("sunny_core.mailbox")
+    mailbox_module.MailAccount = FakeMailAccount
+    protocol_module = types.ModuleType("sunny_core.protocol_auth")
+    protocol_module.login_or_register_protocol = fake_login
+    monkeypatch.setitem(sys.modules, "sunny_core.mailbox", mailbox_module)
+    monkeypatch.setitem(sys.modules, "sunny_core.protocol_auth", protocol_module)
+
+    result = login_access_token(
+        {
+            "email": "user@example.test",
+            "password": "pw",
+            "totp_secret": "JBSW",
+            "proxy": "14.224.199.205:41230:aqPdHe:JWWNEX",
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["email"] == "user@example.test"
+    assert result["account_id"] == "account_fixture"
+    assert result["access_token"].startswith("header.")
+    account = captured["account"]
+    assert account.chatgpt_password == "pw"
+    assert account.totp_secret == "JBSW"
+    assert captured["proxy_url"] == "14.224.199.205:41230:aqPdHe:JWWNEX"
+    assert captured["existing_account"] is True

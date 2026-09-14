@@ -3415,6 +3415,7 @@ button:not(:disabled):active { transform: translateY(0) scale(.985); }
 .direct-card-fields label,.direct-card-proxies label { display:flex; min-width:0; flex-direction:column; gap:8px; color:var(--text-secondary); font-size:11px; font-weight:700; }
 .direct-card-element { min-height:42px; border:1px solid var(--border); border-radius:7px; background:var(--bg-input); padding:12px 10px; }
 .direct-card-element:focus-within { border-color:var(--accent-edge); box-shadow:0 0 0 2px var(--accent-soft); }
+.direct-card-modes { margin:16px 16px 0; }
 .direct-card-import { width:calc(100% - 32px); margin:16px 16px 12px; resize:vertical; }
 .direct-card-import,.direct-card-proxies textarea,.direct-card-toolbar input { border:1px solid var(--border); border-radius:7px; background:var(--bg-input); color:var(--text-primary); outline:none; }
 .direct-card-import,.direct-card-proxies textarea { padding:9px 10px; font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; }

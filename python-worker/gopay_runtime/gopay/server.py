@@ -402,6 +402,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/direct-card/preflight":
                 self.send(200, _direct_card_manager().preflight(data))
                 return
+            if path == "/api/direct-card/login":
+                self.send(200, _direct_card_manager().login(data))
+                return
             if path == "/api/direct-card/fingerprint":
                 self.send(200, _direct_card_manager().allocate_fingerprint(data))
                 return

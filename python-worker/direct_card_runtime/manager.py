@@ -66,6 +66,12 @@ def address(payload: dict[str, Any]) -> dict[str, Any]:
     return protocol_server.fetch_billing_address(payload)
 
 
+def login(payload: dict[str, Any]) -> dict[str, Any]:
+    from .credential_login import login_access_token
+
+    return login_access_token(payload)
+
+
 def start(payload: dict[str, Any]) -> dict[str, Any]:
     protocol_server.validate_payload(payload, require_payment_method=True)
     task_id = uuid.uuid4().hex
