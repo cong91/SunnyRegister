@@ -248,12 +248,11 @@ def validate_payload(payload: dict[str, Any], *, require_payment_method: bool = 
     mode = _text(payload.get("flow_mode") or "full").lower()
     if mode not in {"full", "bind_only", "link_pay", "link_only"}:
         raise ValueError("unsupported flow mode")
-    if mode == "link_only":
-        if not promo_pool:
-            raise ValueError("promo proxy pool is required")
-    elif not promo_pool:
-        raise ValueError("promo proxy pool is required")
-    elif not bind_pool:
+    if not promo_pool and not bind_pool:
+        raise ValueError("at least one proxy pool is required")
+    if not promo_pool:
+        promo_pool = list(bind_pool)
+    if not bind_pool:
         bind_pool = list(promo_pool)
     needs_payment_method = require_payment_method and mode != "link_only"
     payment_method_id = _text(payload.get("payment_method_id"))

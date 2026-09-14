@@ -1128,6 +1128,7 @@ export const viTextMap: Readonly<Record<string, string>> = {
   "请前往接码配置页面启用接码配置": "Vui lòng truy cập trang cấu hình mã kết nối để bật cấu hình mã kết nối",
   "请填写双代理池并完成安全卡片输入": "Vui lòng điền vào nhóm proxy kép và hoàn thành mục nhập thẻ bảo mật",
   "请填写优惠地区代理池并完成安全卡片输入": "Vui lòng điền vào nhóm proxy khu vực thanh toán và hoàn thành mục nhập thẻ bảo mật",
+  "请选择账号并填写任意一个代理池": "Vui lòng chọn tài khoản và điền ít nhất một nhóm proxy",
   "请查看下方账户结果": "Vui lòng xem lại kết quả tài khoản bên dưới",
   "请检查新 PIN，两次输入必须一致且不能与原 PIN 相同": "Vui lòng kiểm tra mã PIN mới, hai mục nhập phải nhất quán và không thể giống với mã PIN ban đầu",
   "请点击右上角“导入邮箱”添加自建 Outlook/Hotmail 邮箱池。": "Nhấp vào Nhập hộp thư ở góc trên cùng bên phải để thêm nhóm hộp thư Outlook/Hotmail tự xây dựng.",

@@ -85,6 +85,23 @@ def test_direct_card_payload_uses_vietnam_market_and_shared_proxy_pool():
     assert result["billing"]["country"] == "VN"
 
 
+def test_direct_card_payload_accepts_bind_pool_as_shared_proxy_pool():
+    from direct_card_runtime.standalone_flow import validate_payload
+
+    result = validate_payload(
+        {
+            "access_token": _token(),
+            "flow_mode": "link_only",
+            "market_country": "VN",
+            "market_currency": "VND",
+            "bind_proxy_pool": ["http://127.0.0.1:8080"],
+        },
+        require_payment_method=False,
+    )
+
+    assert result["bind_pool"] == result["promo_pool"]
+
+
 def test_direct_card_payload_rejects_market_currency_mismatch():
     from direct_card_runtime.standalone_flow import validate_payload
 
