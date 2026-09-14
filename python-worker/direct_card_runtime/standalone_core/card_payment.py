@@ -761,9 +761,7 @@ def run_card_payment(
         log(f"FLOW_STEP:{bind_step_key}:start:{bind_step_label}")
         if config.strong_bind_direct:
             if not checkout_id.startswith("oaics_"):
-                raise CardPaymentError(
-                    "strong bind: expected PH oaics checkout context"
-                )
+                raise CardPaymentError("strong bind: expected oaics checkout context")
             checkout_context = session.get(
                 f"{APP_BASE}/backend-api/payments/checkout/{processor}/{checkout_id}",
                 headers=_app_headers(

@@ -10,8 +10,10 @@ import os
 import re
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from standalone_core.card_payment import CardPaymentConfig, run_card_payment
@@ -34,9 +36,49 @@ _CONFIG_CACHE_MTIME_NS = -1
 _PREFLIGHT_LOCK = threading.RLock()
 _PREFLIGHT_CACHE: dict[str, tuple[float, str, dict[str, Any]]] = {}
 
+MARKET_CURRENCY = {
+    "US": "USD", "GB": "GBP", "JP": "JPY", "KR": "KRW", "IN": "INR",
+    "BR": "BRL", "AU": "AUD", "CA": "CAD", "SG": "SGD", "TH": "THB",
+    "ID": "IDR", "PH": "PHP", "VN": "VND", "TR": "TRY", "AE": "AED",
+    "MX": "MXN", "AR": "ARS", "CL": "CLP", "CO": "COP", "CH": "CHF",
+    "DE": "EUR", "FR": "EUR", "IE": "EUR", "NL": "EUR", "ES": "EUR",
+    "IT": "EUR", "AT": "EUR", "BE": "EUR", "FI": "EUR", "PT": "EUR",
+}
+
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _resolve_market(
+    payload: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
+) -> tuple[str, str]:
+    source = payload if isinstance(payload, dict) else {}
+    defaults = config if isinstance(config, dict) else {}
+    country = _text(
+        source.get("market_country")
+        or source.get("country")
+        or defaults.get("country")
+        or "PH"
+    ).upper()
+    if not re.fullmatch(r"[A-Z]{2}", country):
+        raise ValueError("market country must be a two-letter country code")
+    expected_currency = MARKET_CURRENCY.get(country)
+    currency = _text(
+        source.get("market_currency")
+        or source.get("currency")
+        or expected_currency
+        or defaults.get("currency")
+        or "USD"
+    ).upper()
+    if not re.fullmatch(r"[A-Z]{3}", currency):
+        raise ValueError("market currency must be a three-letter currency code")
+    if expected_currency and currency != expected_currency:
+        raise ValueError(
+            f"market currency {currency} does not match {country} ({expected_currency})"
+        )
+    return country, currency
 
 
 def _load_config() -> dict[str, Any]:
@@ -56,7 +98,10 @@ def _load_config() -> dict[str, Any]:
 
 
 def _preflight_key(ctx: dict[str, Any]) -> str:
-    return f"{ctx['account_id']}\n{ctx['promo_pool'][0]}"
+    return (
+        f"{ctx['account_id']}\n{ctx['promo_pool'][0]}\n"
+        f"{ctx['market_country']}\n{ctx['market_currency']}"
+    )
 
 
 def _remember_preflight(
@@ -196,6 +241,8 @@ def validate_payload(payload: dict[str, Any], *, require_payment_method: bool = 
     if not token:
         raise ValueError("missing AT")
     account_id, email = _account_context(token)
+    config = _load_config()
+    market_country, market_currency = _resolve_market(payload, config)
     bind_pool = _pool(payload.get("bind_proxy_pool"))
     promo_pool = _pool(payload.get("promo_proxy_pool"))
     mode = _text(payload.get("flow_mode") or "full").lower()
@@ -204,24 +251,31 @@ def validate_payload(payload: dict[str, Any], *, require_payment_method: bool = 
     if mode == "link_only":
         if not promo_pool:
             raise ValueError("promo proxy pool is required")
-    elif not bind_pool or not promo_pool:
-        raise ValueError("both proxy pools are required")
+    elif not promo_pool:
+        raise ValueError("promo proxy pool is required")
+    elif not bind_pool:
+        bind_pool = list(promo_pool)
     needs_payment_method = require_payment_method and mode != "link_only"
     payment_method_id = _text(payload.get("payment_method_id"))
     if needs_payment_method and not re.fullmatch(r"pm_[A-Za-z0-9_-]+", payment_method_id):
         raise ValueError("missing or invalid PaymentMethod")
+    billing = _billing_payload(payload.get("billing"), required=needs_payment_method)
+    if needs_payment_method and billing.get("country") != market_country:
+        raise ValueError(
+            f"billing country {billing.get('country')} does not match market {market_country}"
+        )
     return {
         "access_token": token,
         "account_id": account_id,
         "email": email,
         "bind_pool": bind_pool,
         "promo_pool": promo_pool,
+        "market_country": market_country,
+        "market_currency": market_currency,
         "flow_mode": mode,
         "payment_method_id": payment_method_id,
         "card_last4": re.sub(r"\D", "", _text(payload.get("card_last4")))[-4:],
-        "billing": _billing_payload(
-            payload.get("billing"), required=needs_payment_method
-        ),
+        "billing": billing,
     }
 
 
@@ -233,7 +287,7 @@ def _attach_fingerprint(
     if ctx.get("fingerprint_profile") and ctx.get("device_id"):
         return
     logger("FLOW_STEP:fingerprint:start:正在加载账号固定指纹")
-    region = _text(config.get("fingerprint_region") or "US").upper()
+    region = _text(ctx.get("market_country") or config.get("fingerprint_region") or "US").upper()
     profile, device_id = get_account_fingerprint(
         ctx["account_id"],
         region=region,
@@ -280,7 +334,7 @@ def allocate_fingerprint(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("missing AT")
     account_id, email = _account_context(token)
     config = _load_config()
-    region = _text(config.get("fingerprint_region") or "US").upper()
+    region, _currency = _resolve_market(payload, config)
     profile, device_id = get_account_fingerprint(account_id, region=region)
     return _fingerprint_result(account_id, email, profile, device_id)
 
@@ -293,7 +347,7 @@ def allocate_fingerprints(payload: dict[str, Any]) -> dict[str, Any]:
     if len(source) > 500:
         raise ValueError("fingerprint batch cannot exceed 500 accounts")
     config = _load_config()
-    region = _text(config.get("fingerprint_region") or "US").upper()
+    region, _currency = _resolve_market(payload, config)
     prepared: list[dict[str, str]] = []
     metadata: list[tuple[str, str, str]] = []
     output: list[dict[str, Any] | None] = [None] * len(source)
@@ -328,11 +382,17 @@ def allocate_fingerprints(payload: dict[str, Any]) -> dict[str, Any]:
 def fetch_billing_address(payload: dict[str, Any]) -> dict[str, Any]:
     """Fetch and normalize one billing address from the configured API."""
     config = _load_config()
+    country, _currency = _resolve_market(payload, config)
     endpoint = _text(config.get("address_generator") or config.get("test_address_generator")) or (
         "https://addressgen.top/api/v1/address?country_code=us&area_code=DE"
     )
-    if not endpoint.startswith("https://addressgen.top/api/v1/address?"):
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "https" or parsed.netloc.lower() != "addressgen.top" or parsed.path != "/api/v1/address":
         raise ValueError("地址接口配置错误")
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["country_code"] = country.lower()
+    query.pop("area_code", None)
+    endpoint = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), ""))
     request = Request(
         endpoint,
         headers={"Accept": "application/json", "User-Agent": "direct-bind-address/1.0"},
@@ -350,15 +410,19 @@ def fetch_billing_address(payload: dict[str, Any]) -> dict[str, Any]:
         "city": _text(address.get("city")),
         "state": _text(address.get("area_code")).upper(),
         "postal_code": _text(address.get("zipcode")),
-        "country": _text(address.get("country_code") or "US").upper(),
+        "country": _text(address.get("country_code") or country).upper(),
     }
     validated = _billing_payload(billing, required=True)
+    if validated["country"] != country:
+        raise RuntimeError(
+            f"address API returned {validated['country']} for market {country}"
+        )
     return {"ok": True, "source": "address_api", "billing": validated}
 
 
 def _extract_checkout(ctx: dict[str, Any], config: dict[str, Any], logger: Callable[[str], None]) -> dict[str, Any]:
-    country = _text(config.get("country") or "PH").upper()
-    currency = _text(config.get("currency") or "PHP").upper()
+    country = _text(ctx.get("market_country") or config.get("country") or "PH").upper()
+    currency = _text(ctx.get("market_currency") or config.get("currency") or "PHP").upper()
     # Checkout-link extraction is isolated to proxy pool 2. Proxy pool 1 is
     # reserved for SetupIntent card binding and payment confirmation.
     candidates = list(ctx["promo_pool"][:8])
@@ -406,8 +470,8 @@ def preflight(payload: dict[str, Any], logger: Callable[[str], None] = lambda _m
         "publishable_key": _text(result.get("_publishable_key")),
         "checkout_id": _text(result.get("checkout_id")),
         "processor_entity": _text(result.get("processor_entity")),
-        "country": _text(result.get("country") or config.get("country") or "PH"),
-        "currency": _text(result.get("currency") or config.get("currency") or "PHP"),
+        "country": _text(result.get("country") or ctx["market_country"]),
+        "currency": _text(result.get("currency") or ctx["market_currency"]),
         "amount": _text(result.get("amount") or "unknown"),
         "link": _text(result.get("url") or result.get("link")),
         "fingerprint": _text(ctx.get("fingerprint_summary")),
@@ -444,8 +508,8 @@ def run_flow(payload: dict[str, Any], logger: Callable[[str], None] = lambda _me
             "fingerprint": _text(ctx.get("fingerprint_summary")),
         }
     timeout = max(30, min(1800, int(config.get("timeout") or 900)))
-    country = _text(config.get("country") or "PH").upper()
-    currency = _text(config.get("currency") or "PHP").upper()
+    country = _text(ctx.get("market_country") or config.get("country") or "PH").upper()
+    currency = _text(ctx.get("market_currency") or config.get("currency") or "PHP").upper()
     billing = dict(config.get("billing") or {})
     billing.update(ctx.get("billing") or {})
     if ctx["email"] and not _text(billing.get("email")):
@@ -485,8 +549,8 @@ def run_flow(payload: dict[str, Any], logger: Callable[[str], None] = lambda _me
                     checkout_id=_text(first.get("checkout_id")),
                     processor_entity=_text(first.get("processor_entity")),
                     publishable_key=_text(first.get("_publishable_key")),
-                    bind_country=_text(config.get("bind_country") or "US").upper(),
-                    bind_currency=_text(config.get("bind_currency") or "USD").upper(),
+                    bind_country=country,
+                    bind_currency=currency,
                     strong_bind_direct=True,
                     stop_after_bind=bind_only,
                     fast_verify=bool(config.get("fast_verify", True)),

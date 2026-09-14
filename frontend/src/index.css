@@ -3423,7 +3423,9 @@ button:not(:disabled):active { transform: translateY(0) scale(.985); }
 .direct-card-file:hover { background:var(--bg-hover); color:var(--text-primary); }
 .direct-card-file svg { width:14px; height:14px; }
 .direct-card-file input { display:none; }
-.direct-card-proxies { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:16px; }
+.direct-card-proxies { display:grid; grid-template-columns:minmax(150px,.55fr) repeat(2,minmax(0,1fr)); gap:16px; padding:16px; }
+.direct-card-proxies select { width:100%; height:39px; border:1px solid var(--border); border-radius:7px; background:var(--bg-input); color:var(--text-primary); padding:0 10px; outline:none; }
+.direct-card-proxies select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
 .direct-card-proxies textarea { min-height:108px; resize:vertical; }
 .direct-card-view .gopay-field-foot { padding:0 16px 16px; }
 .direct-card-view .gopay-row-actions { gap:8px; padding:0 16px 16px; }
